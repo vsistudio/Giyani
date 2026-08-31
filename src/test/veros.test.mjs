@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { defaultSettings, titleFromSpeech } from '../state/storage.mjs';
+assert.equal(defaultSettings.model.includes('gemini'), true);
+assert.equal(defaultSettings.memory, true);
+assert.equal(titleFromSpeech('Who is Elon Musk and why'), 'Who is Elon Musk and why');
+const html=readFileSync('index.html','utf8');
+assert.match(html,/Speak to VEROS/);
+assert.match(html,/Voice Memory/);
+assert.match(html,/Clear memory/);
+const js=readFileSync('src/audio/audioEngine.mjs','utf8');
+assert.match(js,/getUserMedia/);
+assert.match(js,/SpeechSynthesisUtterance/);
+console.log('VEROS behavioral contract tests passed');
