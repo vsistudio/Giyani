@@ -6,72 +6,30 @@ export class VerosAIError extends Error {
   }
 }
 
-export function resolveGeminiConfig(settings = {}) {
-  const runtime = window.VEROS_CONFIG || {};
-  return {
-    key: runtime.GEMINI_API_KEY || window.VEROS_GEMINI_API_KEY || '',
-    model: runtime.GEMINI_MODEL || settings.model || 'gemini-1.5-flash',
-  };
-}
-
-export function buildSpokenPrompt(input, conversation, settings) {
-  const history = (conversation?.turns || [])
-    .slice(-10)
-    .map((turn) => `${turn.role === 'user' ? 'User' : 'VEROS'}: ${turn.text}`)
-    .join('\n');
-
-  return [
-    'You are VEROS, a voice-only AI assistant.',
-    'Reply for spoken delivery: clear, concise, calm, natural, and useful.',
-    `Voice style: ${settings.style}.`,
-    'Maintain conversational context. Do not format as a chatbot transcript.',
-    history,
-    `User: ${input}`,
-    'VEROS:',
-  ]
-    .filter(Boolean)
-    .join('\n');
-}
-
 export async function generateVerosResponse(input, conversation, settings) {
-  const { key, model } = resolveGeminiConfig(settings);
-
-  if (!key) {
-    throw new VerosAIError(
-      'Gemini is not configured. Add a server proxy or inject a restricted prototype key at runtime.',
-      'CONFIG',
-    );
-  }
-
-  const prompt = buildSpokenPrompt(input, conversation, settings);
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
-    model,
-  )}:generateContent?key=${encodeURIComponent(key)}`;
-
   let response;
   try {
-    response = await fetch(endpoint, {
+    response = await fetch('/api/gemini', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: { temperature: settings.creativity },
-      }),
+      body: JSON.stringify({ input, conversation, settings }),
     });
   } catch {
-    throw new VerosAIError('Network connection failed while contacting Gemini.', 'NETWORK');
+    throw new VerosAIError('Network connection failed while contacting VEROS.', 'NETWORK');
+  }
+
+  let payload = {};
+  try {
+    payload = await response.json();
+  } catch {
+    throw new VerosAIError('VEROS received an invalid response from the AI service.', 'INVALID_JSON');
   }
 
   if (!response.ok) {
-    throw new VerosAIError(`Gemini request failed with status ${response.status}.`, 'REQUEST');
+    throw new VerosAIError(payload.error || `AI request failed with status ${response.status}.`, 'REQUEST');
   }
 
-  const data = await response.json();
-  const text = data?.candidates?.[0]?.content?.parts
-    ?.map((part) => part.text || '')
-    .join('')
-    .trim();
-
+  const text = String(payload.text || '').trim();
   if (!text) {
     throw new VerosAIError('VEROS received an empty response.', 'EMPTY');
   }

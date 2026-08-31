@@ -25,8 +25,15 @@ assert.match(audio, /SpeechSynthesisUtterance/);
 assert.match(audio, /track\.stop\(\)/);
 
 const ai = readFileSync('src/ai/gemini.mjs', 'utf8');
-assert.match(ai, /generateContent/);
+assert.match(ai, /\/api\/gemini/);
+assert.doesNotMatch(ai, /GEMINI_API_KEY/);
 assert.match(ai, /Network connection failed/);
-assert.match(ai, /buildSpokenPrompt/);
 
-console.log('VEROS behavioral contract tests passed');
+const functionCode = readFileSync('functions/api/gemini.js', 'utf8');
+assert.match(functionCode, /onRequestPost/);
+assert.match(functionCode, /env\.GEMINI_API_KEY/);
+assert.match(functionCode, /MAX_INPUT_CHARS/);
+assert.match(functionCode, /Cross-origin requests are not allowed/);
+assert.match(functionCode, /generateContent/);
+
+console.log('VEROS production deployment tests passed');
